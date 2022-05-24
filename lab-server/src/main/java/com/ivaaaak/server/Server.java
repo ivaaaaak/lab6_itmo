@@ -1,5 +1,7 @@
 package com.ivaaaak.server;
 
+import com.ivaaaak.common.commands.Command;
+import com.ivaaaak.common.commands.CommandResult;
 import com.ivaaaak.common.data.Person;
 import com.ivaaaak.common.util.FileManager;
 import com.ivaaaak.server.util.JsonParser;
@@ -7,16 +9,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.Scanner;
-import java.util.Set;
 
 public final class Server {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
+    static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
+    private static final ServerExchanger SERVER_EXCHANGER = new ServerExchanger();
 
     private Server() {
         throw new UnsupportedOperationException("This is an utility class and can not be instantiated");
@@ -26,20 +27,19 @@ public final class Server {
         try {
             int serverPort = Integer.parseInt(args[0]);
 
-            try (ServerSocketChannel serverChannel = ServerExchanger.openChannel(serverPort);
-                 Selector selector = ServerExchanger.openSelector(serverChannel)) {
-                startCycle(selector);
+            try (ServerSocket serverSocket = new ServerSocket(serverPort)) {
+                SERVER_EXCHANGER.setServerSocket(serverSocket);
+                startCycle();
             } catch (IOException e) {
-                LOGGER.error("Failed to open server's channel or its selector");
-                e.printStackTrace();
+                LOGGER.error("Failed to open server socket: ", e);
             }
 
-        } catch (IndexOutOfBoundsException | IllegalArgumentException e) {
+        } catch (IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
             LOGGER.error("Invalid port. You must enter port as an integer argument");
         }
     }
 
-    private static void startCycle(Selector selector) {
+    private static void startCycle() {
         final CollectionStorage collectionStorage = new CollectionStorage();
 
         if (!getHashtableFromFile(collectionStorage)) {
@@ -60,61 +60,47 @@ public final class Server {
                     }
                 }
                 try {
-                    serveClients(selector, collectionStorage);
+                    serveClients(collectionStorage);
                 } catch (IOException e) {
-                    LOGGER.error("Some IO error with selector has occurred");
-                    e.printStackTrace();
+                    LOGGER.error("Failed to close client socket: ", e);
                 }
             }
         } catch (IOException e) {
-            LOGGER.error("Something's wrong with server's console output");
-            e.printStackTrace();
+            LOGGER.error("Something's wrong with server's console output: ", e);
         }
     }
 
-    private static void serveClients(Selector selector, CollectionStorage collectionStorage) throws IOException {
-        selector.wakeup();
-        selector.select();
-        Set<SelectionKey> readyKeys = selector.selectedKeys();
-        Iterator<SelectionKey> iterator = readyKeys.iterator();
-
-        while (iterator.hasNext()) {
-            processKey(iterator.next(), collectionStorage);
-            iterator.remove();
+    private static void serveClients(CollectionStorage collectionStorage) throws IOException {
+        acceptNewClients();
+        for (Socket clientSocket: SERVER_EXCHANGER.getClients()) {
+            try {
+                Command command = SERVER_EXCHANGER.receiveCommand(clientSocket);
+                if (command != null) {
+                    CommandResult result = command.execute(collectionStorage);
+                    SERVER_EXCHANGER.sendResult(clientSocket, result);
+                }
+            } catch (SocketException e) {
+                LOGGER.error("There's problem with client socket: ", e);
+                clientSocket.close();
+                SERVER_EXCHANGER.removeClient(clientSocket);
+            } catch (IOException e) {
+                LOGGER.error("Failed to process the command: ", e);
+                clientSocket.close();
+                SERVER_EXCHANGER.removeClient(clientSocket);
+            } catch (ClassNotFoundException e) {
+                LOGGER.error("Received invalid data from client", e);
+            }
         }
     }
 
-    private static void processKey(SelectionKey key, CollectionStorage collectionStorage) {
-        if (key.isValid()) {
-            if (key.isAcceptable()) {
-                try {
-                    ServerExchanger.accept(key);
-                } catch (IOException e) {
-                    LOGGER.error("Failed to open new client's channel");
-                    e.printStackTrace();
-                }
+    private static void acceptNewClients() {
+        try {
+            Socket clientSocket = SERVER_EXCHANGER.acceptConnection();
+            if (clientSocket != null) {
+                SERVER_EXCHANGER.addClient(clientSocket);
             }
-            if (key.isReadable()) {
-                try {
-                    ServerExchanger.readAndExecuteCommand(key, collectionStorage);
-                } catch (IOException e) {
-                    LOGGER.error("Failed to read command");
-                    e.printStackTrace();
-                    key.cancel();
-                    return;
-                } catch (ClassNotFoundException e) {
-                    LOGGER.error("Server received incorrect data from client");
-                    e.printStackTrace();
-                }
-            }
-            if (key.isWritable()) {
-                try {
-                    ServerExchanger.writeResult(key);
-                } catch (IOException e) {
-                    LOGGER.error("Failed to send the result to client");
-                    e.printStackTrace();
-                }
-            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to open new client socket: ", e);
         }
     }
 
@@ -131,13 +117,14 @@ public final class Server {
     private static boolean getHashtableFromFile(CollectionStorage collectionStorage) {
         try {
             FileManager.setMainFilePath(System.getenv("LAB"));
+            if (FileManager.getMainFilePath().isBlank()) {
+                LOGGER.error("You need to create the environment variable LAB with a path to a file where collection will be saved");
+                return false;
+            }
             String fileData = FileManager.read(FileManager.getMainFilePath());
             Hashtable<Integer, Person> ht = JsonParser.parseFromString(fileData);
             collectionStorage.initializeHashtable(ht);
             return true;
-        } catch (NullPointerException e) {
-            LOGGER.error("You need to create the environment variable LAB with a path to a file where collection will be saved");
-            return false;
         } catch (IOException e) {
             LOGGER.error("Failed to read the file with the collection");
             e.printStackTrace();

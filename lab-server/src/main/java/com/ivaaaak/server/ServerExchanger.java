@@ -6,103 +6,84 @@ import static com.ivaaaak.common.util.Serializing.serialize;
 import com.ivaaaak.common.commands.Command;
 import com.ivaaaak.common.commands.CommandResult;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.concurrent.TimeUnit;
+import java.util.HashSet;
 
 
-public final class ServerExchanger {
+public class ServerExchanger {
 
-    private static final int MAX_META_DATA = 4;
-    private static final Logger LOGGER = LoggerFactory.getLogger(ServerExchanger.class);
-    private static final int SERVER_WAITING_TIME = 5;
+    private static final Logger LOGGER = Server.LOGGER;
+    private final int maxMetaData = 4;
+    private ServerSocket serverSocket;
+    private final HashSet<Socket> clients = new HashSet<>();
+    private final int serverWaitingPeriod = 10;
 
-    private ServerExchanger() {
+    public ServerExchanger() {
 
     }
 
-    public static ServerSocketChannel openChannel(int port) throws IOException {
-        ServerSocketChannel serverChannel = ServerSocketChannel.open();
-        InetSocketAddress address = new InetSocketAddress(port);
-        serverChannel.bind(address);
-        LOGGER.info("Listening to the port: " + address.getPort());
-        serverChannel.configureBlocking(false);
-        return serverChannel;
+    public void setServerSocket(ServerSocket serverSocket) {
+        this.serverSocket = serverSocket;
+        LOGGER.info("Listening to the port: {}", serverSocket.getLocalPort());
     }
 
-    public static Selector openSelector(ServerSocketChannel serverChannel) throws IOException {
-        Selector selector = Selector.open();
-        serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-        return selector;
+    public void addClient(Socket socket) {
+        clients.add(socket);
     }
 
-    private static Command read(SelectionKey key) throws IOException, ClassNotFoundException {
+    public HashSet<Socket> getClients() {
+        return clients;
+    }
+    public void removeClient(Socket socket) {
+        clients.remove(socket);
+    }
+
+    public Command receiveCommand(Socket clientSocket) throws IOException, ClassNotFoundException {
+        InputStream inputStream = clientSocket.getInputStream();
+        byte[] commandSize = new byte[maxMetaData];
         try {
-            SocketChannel channel = (SocketChannel) key.channel();
-            ByteBuffer metaData = ByteBuffer.allocate(MAX_META_DATA);
-
-            if (channel.read(metaData) != -1) {
-                metaData.position(0);
-                int commandSize = metaData.getInt();
-                ByteBuffer mainData = ByteBuffer.allocate(commandSize);
-                TimeUnit.MILLISECONDS.sleep(SERVER_WAITING_TIME);
-                if (channel.read(mainData) != 0) {
-                    Command command = (Command) deserialize(mainData.array());
-                    mainData.clear();
-                    channel.configureBlocking(false);
-                    channel.register(key.selector(), SelectionKey.OP_WRITE);
-                    return command;
+            clientSocket.setSoTimeout(serverWaitingPeriod);
+            if (inputStream.read(commandSize) != 0) {
+                byte[] command = new byte[ByteBuffer.wrap(commandSize).getInt()];
+                if (inputStream.read(command) != 0) {
+                    Command currentCommand = (Command) deserialize(command);
+                    LOGGER.info("Read command from the client: {}", currentCommand.toString());
+                    return currentCommand;
                 }
             }
-        } catch (IllegalArgumentException | InterruptedException e) {
-            e.printStackTrace();
+            return null;
+        } catch (SocketTimeoutException e) {
+            return null;
         }
-        return null;
     }
 
-    private static void write(SelectionKey key, CommandResult result) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
+    public void sendResult(Socket clientSocket, CommandResult result) throws IOException {
+        OutputStream outputStream = clientSocket.getOutputStream();
         byte[] serializedResult = serialize(result);
         int resultSize = serializedResult.length;
 
-        ByteBuffer mainData = ByteBuffer.wrap(serializedResult);
-        ByteBuffer metaData = ByteBuffer.allocate(MAX_META_DATA).putInt(resultSize);
-        metaData.position(0);
-        channel.write(metaData);
-        channel.write(mainData);
-        metaData.clear();
-        mainData.clear();
-        channel.configureBlocking(false);
-        channel.register(key.selector(), SelectionKey.OP_READ);
+        outputStream.write(ByteBuffer.allocate(maxMetaData).putInt(resultSize).array());
+        outputStream.write(serializedResult);
+        outputStream.flush();
+        LOGGER.info("Sent result to the client: {}", result.getMessage());
     }
 
-    public static void accept(SelectionKey key) throws IOException {
-        ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
-        SocketChannel channel = serverChannel.accept();
-        channel.configureBlocking(false);
-        channel.register(key.selector(), SelectionKey.OP_READ);
-        LOGGER.info("Established connection with client: " + channel.getLocalAddress());
-    }
-
-    public static void readAndExecuteCommand(SelectionKey key, CollectionStorage collectionStorage) throws IOException, ClassNotFoundException {
-        Command currentCommand = read(key);
-        if (currentCommand != null) {
-            key.attach(currentCommand.execute(collectionStorage));
-            LOGGER.info("Read a command from client: " + currentCommand);
+    public Socket acceptConnection() throws IOException {
+        try {
+            serverSocket.setSoTimeout(serverWaitingPeriod);
+            Socket clientSocket = serverSocket.accept();
+            LOGGER.info("Established connection with client: {}", clientSocket.getInetAddress().toString());
+            return clientSocket;
+        } catch (SocketTimeoutException e) {
+            return null;
         }
-    }
-
-    public static void writeResult(SelectionKey key) throws IOException {
-        CommandResult result = (CommandResult) key.attachment();
-        write(key, result);
-        LOGGER.info("Sent result to client: " + result.toString());
     }
 
 }
