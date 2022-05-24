@@ -5,13 +5,13 @@ import com.ivaaaak.common.commands.CommandResult;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.util.StringJoiner;
 import java.util.function.Function;
 
 public final class Client {
-
-    private static String host;
-    private static int port;
-    private static SocketChannel currentChannel;
+    private static ClientExchanger clientExchanger;
+    private static final InputManager INPUT_MANAGER = new InputManager();
+    private static final PersonMaker PERSON_MAKER = new PersonMaker(INPUT_MANAGER);
 
     private Client() {
         throw new UnsupportedOperationException("This is an utility class and can not be instantiated");
@@ -19,27 +19,24 @@ public final class Client {
 
     public static void main(String[] args) {
         try {
-            host = args[0];
-            port = Integer.parseInt(args[1]);
-            try (SocketChannel channel = ClientExchanger.openChannelToServer(host, port)) {
-                final InputManager inputManager = new InputManager();
-                final PersonMaker personMaker = new PersonMaker(inputManager);
-                startCycle(inputManager, personMaker, channel);
+            String host = args[0];
+            int port = Integer.parseInt(args[1]);
+            clientExchanger = new ClientExchanger(host, port);
+            try (SocketChannel channel = clientExchanger.openChannelToServer()) {
+                clientExchanger.setSocketChannel(channel);
+                startCycle();
             } catch (IOException e) {
                 System.err.println("Failed to open channel with server. There isn't working server on these host and port.");
                 e.printStackTrace();
             }
-        } catch (NumberFormatException | IndexOutOfBoundsException e) {
+        } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
             System.err.println("Cannot parse host and port arguments. Enter them in the order: host's name, port");
         }
     }
 
-    private static void startCycle(InputManager inputManager,
-                                   PersonMaker personMaker,
-                                   SocketChannel channel) {
-        currentChannel = channel;
+    private static void startCycle() {
         while (true) {
-            String[] command = inputManager.readLine().split(" ");
+            String[] command = INPUT_MANAGER.readLine().split(" ");
             String name = command[0];
             String arg = "";
             if (command.length > 1) {
@@ -50,14 +47,14 @@ public final class Client {
             }
             if ("execute_script".equals(name)) {
                 if (checkArgument(arg, x -> x) != null) {
-                    inputManager.connectToFile(arg);
+                    INPUT_MANAGER.connectToFile(arg);
                     continue;
                 }
             }
             if (CommandStore.getCommandsNames().contains(name)) {
-                Command currentCommand = formCurrentCommand(name, arg, personMaker);
+                Command currentCommand = formCurrentCommand(name, arg);
                 if (currentCommand != null) {
-                    processCommand(currentCommand, currentChannel);
+                    processCommand(currentCommand);
                 }
             } else {
                 System.out.println("Command not found. Use \"help\" to get information about commands");
@@ -65,19 +62,33 @@ public final class Client {
         }
     }
 
-    private static void processCommand(Command command, SocketChannel channel) {
+    private static void processCommand(Command command) {
         try {
-            ClientExchanger.sendCommand(command, channel);
-            CommandResult result = ClientExchanger.receiveResult(channel);
-            System.out.println(result.getMessage());
+            clientExchanger.sendCommand(command);
+            CommandResult result = clientExchanger.receiveResult();
+            String message = result.getMessage();
+            Object[] answer = result.getPeople();
+            if (message != null) {
+                System.out.println(message);
+            }
+            if (answer != null) {
+                StringJoiner output = new StringJoiner("\n\n");
+                for (Object person : answer) {
+                    output.add(person.toString());
+                }
+                System.out.println(output);
+            }
         } catch (IOException e) {
+            System.err.println("Failed to process command: " + command.toString());
             e.printStackTrace();
-            SocketChannel newChanel = ClientExchanger.reconnectToServer(host, port);
+            SocketChannel newChanel = clientExchanger.reconnectToServer();
             if (newChanel != null) {
-                currentChannel = newChanel;
+                clientExchanger.setSocketChannel(newChanel);
             }
         } catch (ClassNotFoundException e) {
             System.err.println("Incorrect answer from server");
+            e.printStackTrace();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -96,7 +107,7 @@ public final class Client {
         }
     }
 
-    private static Command formCurrentCommand(String name, String arg, PersonMaker personMaker) {
+    private static Command formCurrentCommand(String name, String arg) {
         Object firstArgument = null;
         Object secondArgument = null;
 
@@ -106,10 +117,10 @@ public final class Client {
             if (firstArgument == null) {
                 return null;
             }
-            secondArgument = personMaker.makePerson();
+            secondArgument = PERSON_MAKER.makePerson();
         }
         if ("remove_lower".equals(name)) {
-            firstArgument = personMaker.makePerson();
+            firstArgument = PERSON_MAKER.makePerson();
         }
         if ("remove_key".equals(name)) {
             firstArgument = checkArgument(arg, Integer::parseInt);
@@ -118,7 +129,7 @@ public final class Client {
             }
         }
         if ("filter_by_location".equals(name)) {
-            firstArgument = personMaker.makeLocation();
+            firstArgument = PERSON_MAKER.makeLocation();
         }
         if ("filter_starts_with_name".equals(name)) {
             firstArgument = checkArgument(arg, x -> x);

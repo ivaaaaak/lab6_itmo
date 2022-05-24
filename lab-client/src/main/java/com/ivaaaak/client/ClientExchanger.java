@@ -8,59 +8,72 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.TimeUnit;
 
 import static com.ivaaaak.common.util.Serializing.deserialize;
 import static com.ivaaaak.common.util.Serializing.serialize;
 
-public final class ClientExchanger {
+public class ClientExchanger {
 
-    static final int MAX_META_DATA = 4;
+    private final String host;
+    private final int port;
+    private final int maxMetaData = 4;
+    private SocketChannel channel;
 
-    private ClientExchanger() {
-
+    public ClientExchanger(String host, int port) {
+        this.host = host;
+        this.port = port;
     }
 
-    public static SocketChannel openChannelToServer(String host, int port) throws IOException {
-        SocketChannel channel = SocketChannel.open();
+    public SocketChannel openChannelToServer() throws IOException {
+        SocketChannel newChannel = SocketChannel.open();
         InetAddress ia = InetAddress.getByName(host);
         InetSocketAddress address = new InetSocketAddress(ia, port);
-        channel.connect(address);
+        newChannel.connect(address);
         System.out.println("Connection has been established");
-        return channel;
+        newChannel.configureBlocking(false);
+        return newChannel;
     }
 
-    public static SocketChannel reconnectToServer(String host, int port) {
+    public void setSocketChannel(SocketChannel newChannel) {
+        channel = newChannel;
+    }
+
+    public SocketChannel reconnectToServer() {
         try {
             System.err.println("Failed to exchange data with server. Server isn't working");
-            return ClientExchanger.openChannelToServer(host, port);
+            return openChannelToServer();
         } catch (IOException e) {
             return null;
         }
     }
 
-    public static void sendCommand(Command command, SocketChannel channel) throws IOException {
+    public void sendCommand(Command command) throws IOException {
         byte[] serializedCommand = serialize(command);
         int commandSize = serializedCommand.length;
 
         ByteBuffer mainData = ByteBuffer.wrap(serializedCommand);
-        ByteBuffer metaData = ByteBuffer.allocate(MAX_META_DATA).putInt(commandSize);
+        ByteBuffer metaData = ByteBuffer.allocate(maxMetaData).putInt(commandSize);
         metaData.position(0);
         channel.write(metaData);
         channel.write(mainData);
-        metaData.clear();
-        mainData.clear();
     }
 
-    public static CommandResult receiveResult(SocketChannel channel) throws IOException, ClassNotFoundException {
-        ByteBuffer metaData = ByteBuffer.allocate(MAX_META_DATA);
-        channel.read(metaData);
-        metaData.position(0);
-        ByteBuffer mainData = ByteBuffer.allocate(metaData.getInt());
-        metaData.clear();
-        channel.read(mainData);
-        CommandResult result = (CommandResult) deserialize(mainData.array());
-        mainData.clear();
-        return result;
+    public CommandResult receiveResult() throws IOException, ClassNotFoundException, InterruptedException {
+        ByteBuffer metaData = ByteBuffer.allocate(maxMetaData);
+        final int clientWaitingPeriod = 10;
+        int waitingTime = clientWaitingPeriod;
+        while (waitingTime > 0) {
+            if (channel.read(metaData) != 0) {
+                metaData.position(0);
+                ByteBuffer mainData = ByteBuffer.allocate(metaData.getInt());
+                channel.read(mainData);
+                return (CommandResult) deserialize(mainData.array());
+            }
+            waitingTime--;
+            TimeUnit.MILLISECONDS.sleep(clientWaitingPeriod);
+        }
+        return new CommandResult("Waiting time for the response from server has expired", null);
     }
 
 

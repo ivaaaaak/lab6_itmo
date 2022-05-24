@@ -47,7 +47,7 @@ public class InputManager {
                 }
             } catch (IOException e) {
                 System.err.println("Some problems with file has occurred");
-                System.err.println(e.getMessage());
+                e.printStackTrace();
             }
         }
     }
