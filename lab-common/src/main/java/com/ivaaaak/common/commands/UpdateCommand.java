@@ -21,6 +21,5 @@ public class UpdateCommand extends Command {
             return new CommandResult("The element has been updated");
         }
         return new CommandResult("There's no element with this id. Use \"show\" to get information about elements");
-
     }
 }

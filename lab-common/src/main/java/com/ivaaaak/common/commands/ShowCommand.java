@@ -1,8 +1,8 @@
 package com.ivaaaak.common.commands;
 
+import com.ivaaaak.common.data.Person;
 import com.ivaaaak.common.util.CollectionStorable;
 
-import java.util.StringJoiner;
 
 public class ShowCommand extends Command {
 
@@ -11,11 +11,9 @@ public class ShowCommand extends Command {
         if (collectionStorage.getHashtable().isEmpty()) {
             return new CommandResult("The collection is empty");
         }
-        StringJoiner output = new StringJoiner("\n\n");
-        for (Integer key : collectionStorage.getKeysSet()) {
-            output.add(key + " = " + collectionStorage.getPerson(key).toString());
-        }
-        return new CommandResult(output.toString());
+        Object[] answer = new Person[collectionStorage.getHashtable().size()];
+        collectionStorage.getHashtable().values().toArray(answer);
+        return new CommandResult(answer);
     }
 
 }

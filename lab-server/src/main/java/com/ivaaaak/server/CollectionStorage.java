@@ -6,11 +6,9 @@ import com.ivaaaak.common.data.Person;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 
 public class CollectionStorage implements com.ivaaaak.common.util.CollectionStorable {
@@ -74,12 +72,12 @@ public class CollectionStorage implements com.ivaaaak.common.util.CollectionStor
     }
 
 
-    public List<Person> getMatchingPeople(Location location) {
-        return hashtable.values().stream().filter(x -> (x.getLocation() != null)).filter(x -> (x.getLocation().equals(location))).collect(Collectors.toList());
+    public Object[] getMatchingPeople(Location location) {
+        return hashtable.values().stream().filter(x -> (x.getLocation() != null)).filter(x -> (x.getLocation().equals(location))).toArray();
     }
 
-    public List<Person> getMatchingPeople(String substring) {
-        return hashtable.values().stream().filter(x -> x.getName().startsWith(substring)).collect(Collectors.toList());
+    public Object[] getMatchingPeople(String substring) {
+        return hashtable.values().stream().filter(x -> x.getName().startsWith(substring)).toArray();
     }
 
     public Person getMaxColorPerson() {

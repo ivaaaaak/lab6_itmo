@@ -9,9 +9,10 @@ public class MaxByHairColorCommand extends Command {
     @Override
     public CommandResult execute(CollectionStorable collectionStorage) {
         Person maxPerson = collectionStorage.getMaxColorPerson();
+        Object[] answer = new Object[] {maxPerson};
         if (maxPerson == null) {
             return new CommandResult("The collection is empty");
         }
-        return new CommandResult(maxPerson.toString());
+        return new CommandResult(answer);
     }
 }
