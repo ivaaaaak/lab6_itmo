@@ -1,13 +1,15 @@
 package com.ivaaaak.common.commands;
 
+import com.ivaaaak.common.data.Person;
+
 import java.io.Serializable;
 
 public class CommandResult implements Serializable {
 
     private final String message;
-    private final Object[] people;
+    private final Person[] people;
 
-    public CommandResult(String message, Object[] people) {
+    public CommandResult(String message, Person[] people) {
         this.message = message;
         this.people = people;
     }
@@ -15,7 +17,7 @@ public class CommandResult implements Serializable {
         this.message = message;
         this.people = null;
     }
-    public CommandResult(Object[] people) {
+    public CommandResult(Person[] people) {
         this.people = people;
         this.message = "";
     }
@@ -24,7 +26,7 @@ public class CommandResult implements Serializable {
         return message;
     }
 
-    public Object[] getPeople() {
+    public Person[] getPeople() {
         return people;
     }
 

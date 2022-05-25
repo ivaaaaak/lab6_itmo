@@ -8,7 +8,6 @@ import java.util.Comparator;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 
 public class CollectionStorage implements com.ivaaaak.common.util.CollectionStorable {
@@ -57,27 +56,17 @@ public class CollectionStorage implements com.ivaaaak.common.util.CollectionStor
         hashtable.remove(key);
     }
 
-
-
-    public Person getPerson(Integer key) {
-        return hashtable.get(key);
-    }
-
-    public Set<Integer> getKeysSet() {
-        return hashtable.keySet();
-    }
-
     public boolean containsKey(Integer key) {
         return hashtable.containsKey(key);
     }
 
 
-    public Object[] getMatchingPeople(Location location) {
-        return hashtable.values().stream().filter(x -> (x.getLocation() != null)).filter(x -> (x.getLocation().equals(location))).toArray();
+    public Person[] getMatchingPeople(Location location) {
+        return hashtable.values().stream().filter(x -> (x.getLocation() != null)).filter(x -> (x.getLocation().equals(location))).toArray(Person[]::new);
     }
 
-    public Object[] getMatchingPeople(String substring) {
-        return hashtable.values().stream().filter(x -> x.getName().startsWith(substring)).toArray();
+    public Person[] getMatchingPeople(String substring) {
+        return hashtable.values().stream().filter(x -> x.getName().startsWith(substring)).toArray(Person[]::new);
     }
 
     public Person getMaxColorPerson() {

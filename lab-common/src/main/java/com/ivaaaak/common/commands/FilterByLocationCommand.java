@@ -1,6 +1,7 @@
 package com.ivaaaak.common.commands;
 
 import com.ivaaaak.common.data.Location;
+import com.ivaaaak.common.data.Person;
 import com.ivaaaak.common.util.CollectionStorable;
 
 public class FilterByLocationCommand extends Command {
@@ -12,7 +13,7 @@ public class FilterByLocationCommand extends Command {
 
     @Override
     public CommandResult execute(CollectionStorable collectionStorage) {
-        Object[] answer = collectionStorage.getMatchingPeople(locationArg);
+        Person[] answer = collectionStorage.getMatchingPeople(locationArg);
         if (answer.length == 0) {
             return new CommandResult("There aren't any elements with this location");
         }

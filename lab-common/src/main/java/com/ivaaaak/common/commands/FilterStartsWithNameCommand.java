@@ -1,5 +1,6 @@
 package com.ivaaaak.common.commands;
 
+import com.ivaaaak.common.data.Person;
 import com.ivaaaak.common.util.CollectionStorable;
 
 public class FilterStartsWithNameCommand extends Command {
@@ -11,7 +12,7 @@ public class FilterStartsWithNameCommand extends Command {
 
     @Override
     public CommandResult execute(CollectionStorable collectionStorage) {
-        Object[] answer = collectionStorage.getMatchingPeople(stringArg);
+        Person[] answer = collectionStorage.getMatchingPeople(stringArg);
         if (answer.length == 0) {
             return new CommandResult("There aren't any elements whose name starts like this");
         }

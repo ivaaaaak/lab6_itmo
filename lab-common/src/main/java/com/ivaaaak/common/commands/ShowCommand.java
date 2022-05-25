@@ -11,8 +11,7 @@ public class ShowCommand extends Command {
         if (collectionStorage.getHashtable().isEmpty()) {
             return new CommandResult("The collection is empty");
         }
-        Object[] answer = new Person[collectionStorage.getHashtable().size()];
-        collectionStorage.getHashtable().values().toArray(answer);
+        Person[] answer = collectionStorage.getHashtable().values().toArray(Person[]::new);
         return new CommandResult(answer);
     }
 
