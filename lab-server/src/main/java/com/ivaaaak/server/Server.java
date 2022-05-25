@@ -17,6 +17,7 @@ import java.util.Scanner;
 
 public final class Server {
     static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
+    private static final CollectionStorage COLLECTION_STORAGE = new CollectionStorage();
     private static final ServerExchanger SERVER_EXCHANGER = new ServerExchanger();
 
     private Server() {
@@ -25,42 +26,41 @@ public final class Server {
 
     public static void main(String[] args) {
         try {
-            int serverPort = Integer.parseInt(args[0]);
+            if (args.length >= 1) {
+                int serverPort = Integer.parseInt(args[0]);
 
-            try (ServerSocket serverSocket = new ServerSocket(serverPort)) {
-                SERVER_EXCHANGER.setServerSocket(serverSocket);
-                startCycle();
-            } catch (IOException e) {
-                LOGGER.error("Failed to open server socket: ", e);
+                try (ServerSocket serverSocket = new ServerSocket(serverPort)) {
+                    SERVER_EXCHANGER.setServerSocket(serverSocket);
+                    if (getHashtableFromFile()) {
+                        startCycle();
+                    }
+                } catch (IOException e) {
+                    LOGGER.error("Failed to open server socket: ", e);
+                }
+            } else {
+                LOGGER.error("You need to enter port as an argument");
             }
-
-        } catch (IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
+        } catch (NumberFormatException e) {
             LOGGER.error("Invalid port. You must enter port as an integer argument");
         }
     }
 
     private static void startCycle() {
-        final CollectionStorage collectionStorage = new CollectionStorage();
-
-        if (!getHashtableFromFile(collectionStorage)) {
-            return;
-        }
-
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
                 if (System.in.available() > 0) {
                     String input = scanner.nextLine();
                     if ("exit".equals(input)) {
-                        saveHashtableToFile(collectionStorage);
+                        saveHashtableToFile();
                         break;
                     }
                     if ("save".equals(input)) {
-                        saveHashtableToFile(collectionStorage);
+                        saveHashtableToFile();
                         LOGGER.info("Collection has been saved");
                     }
                 }
                 try {
-                    serveClients(collectionStorage);
+                    serveClients();
                 } catch (IOException e) {
                     LOGGER.error("Failed to close client socket: ", e);
                 }
@@ -70,13 +70,13 @@ public final class Server {
         }
     }
 
-    private static void serveClients(CollectionStorage collectionStorage) throws IOException {
+    private static void serveClients() throws IOException {
         acceptNewClients();
         for (Socket clientSocket: SERVER_EXCHANGER.getClients()) {
             try {
                 Command command = SERVER_EXCHANGER.receiveCommand(clientSocket);
                 if (command != null) {
-                    CommandResult result = command.execute(collectionStorage);
+                    CommandResult result = command.execute(COLLECTION_STORAGE);
                     SERVER_EXCHANGER.sendResult(clientSocket, result);
                 }
             } catch (SocketException e) {
@@ -104,30 +104,28 @@ public final class Server {
         }
     }
 
-    private static void saveHashtableToFile(CollectionStorage collectionStorage) {
+    private static void saveHashtableToFile() {
         try {
-            String data = JsonParser.parseIntoString(collectionStorage.getHashtable());
+            String data = JsonParser.parseIntoString(COLLECTION_STORAGE.getHashtable());
             FileManager.write(data, FileManager.getMainFilePath());
         } catch (IOException e) {
-            LOGGER.error("Failed to save collection into the file");
-            e.printStackTrace();
+            LOGGER.error("Failed to save collection into the file", e);
         }
     }
 
-    private static boolean getHashtableFromFile(CollectionStorage collectionStorage) {
+    private static boolean getHashtableFromFile() {
         try {
             FileManager.setMainFilePath(System.getenv("LAB"));
-            if (FileManager.getMainFilePath().isBlank()) {
+            if (FileManager.getMainFilePath() == null) {
                 LOGGER.error("You need to create the environment variable LAB with a path to a file where collection will be saved");
                 return false;
             }
             String fileData = FileManager.read(FileManager.getMainFilePath());
             Hashtable<Integer, Person> ht = JsonParser.parseFromString(fileData);
-            collectionStorage.initializeHashtable(ht);
+            COLLECTION_STORAGE.initializeHashtable(ht);
             return true;
         } catch (IOException e) {
-            LOGGER.error("Failed to read the file with the collection");
-            e.printStackTrace();
+            LOGGER.error("Failed to read the file with the collection", e);
             return false;
         }
     }

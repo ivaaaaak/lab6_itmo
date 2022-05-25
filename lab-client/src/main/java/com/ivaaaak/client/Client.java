@@ -2,6 +2,7 @@ package com.ivaaaak.client;
 
 import com.ivaaaak.common.commands.Command;
 import com.ivaaaak.common.commands.CommandResult;
+import com.ivaaaak.common.data.Person;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -19,17 +20,21 @@ public final class Client {
 
     public static void main(String[] args) {
         try {
-            String host = args[0];
-            int port = Integer.parseInt(args[1]);
-            clientExchanger = new ClientExchanger(host, port);
-            try (SocketChannel channel = clientExchanger.openChannelToServer()) {
-                clientExchanger.setSocketChannel(channel);
-                startCycle();
-            } catch (IOException e) {
-                System.err.println("Failed to open channel with server. There isn't working server on these host and port.");
-                e.printStackTrace();
+            if (args.length >= 2) {
+                String host = args[0];
+                int port = Integer.parseInt(args[1]);
+                clientExchanger = new ClientExchanger(host, port);
+                try (SocketChannel channel = clientExchanger.openChannelToServer()) {
+                    clientExchanger.setSocketChannel(channel);
+                    startCycle();
+                } catch (IOException e) {
+                    System.err.println("Failed to open channel with server. There isn't working server on these host and port.");
+                    e.printStackTrace();
+                }
+            } else {
+               System.err.println("You need to enter host's name and port as arguments");
             }
-        } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+        } catch (NumberFormatException e) {
             System.err.println("Cannot parse host and port arguments. Enter them in the order: host's name, port");
         }
     }
@@ -50,6 +55,7 @@ public final class Client {
                     INPUT_MANAGER.connectToFile(arg);
                     continue;
                 }
+                continue;
             }
             if (CommandStore.getCommandsNames().contains(name)) {
                 Command currentCommand = formCurrentCommand(name, arg);
@@ -67,19 +73,19 @@ public final class Client {
             clientExchanger.sendCommand(command);
             CommandResult result = clientExchanger.receiveResult();
             String message = result.getMessage();
-            Object[] answer = result.getPeople();
+            Person[] answer = result.getPeople();
             if (message != null) {
                 System.out.println(message);
             }
             if (answer != null) {
                 StringJoiner output = new StringJoiner("\n\n");
-                for (Object person : answer) {
+                for (Person person : answer) {
                     output.add(person.toString());
                 }
                 System.out.println(output);
             }
         } catch (IOException e) {
-            System.err.println("Failed to process command: " + command.toString());
+            System.err.println("Failed to exchange data with server");
             e.printStackTrace();
             SocketChannel newChanel = clientExchanger.reconnectToServer();
             if (newChanel != null) {
@@ -96,7 +102,7 @@ public final class Client {
 
     private static <T> T checkArgument(String arg, Function<String, T> converter) {
         if (arg.isBlank()) {
-            System.out.println("This command needs an argument. Please try again:");
+            System.out.println("This command needs an argument");
             return null;
         }
         try {
