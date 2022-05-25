@@ -41,6 +41,7 @@ public class ServerExchanger {
     public HashSet<Socket> getClients() {
         return clients;
     }
+
     public void removeClient(Socket socket) {
         clients.remove(socket);
     }
@@ -54,7 +55,7 @@ public class ServerExchanger {
                 byte[] command = new byte[ByteBuffer.wrap(commandSize).getInt()];
                 if (inputStream.read(command) != 0) {
                     Command currentCommand = (Command) deserialize(command);
-                    LOGGER.info("Read command from the client: {}", currentCommand.toString());
+                    LOGGER.info("Read command from the client {}: {}", clientSocket.getInetAddress().toString(), currentCommand.toString());
                     return currentCommand;
                 }
             }
@@ -72,7 +73,7 @@ public class ServerExchanger {
         outputStream.write(ByteBuffer.allocate(maxMetaData).putInt(resultSize).array());
         outputStream.write(serializedResult);
         outputStream.flush();
-        LOGGER.info("Sent result to the client: {}", result.getMessage());
+        LOGGER.info("Sent result to the client {}: {}", clientSocket.getInetAddress().toString(), result.getMessage());
     }
 
     public Socket acceptConnection() throws IOException {
