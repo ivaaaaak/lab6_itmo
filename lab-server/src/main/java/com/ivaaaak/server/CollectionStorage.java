@@ -62,11 +62,16 @@ public class CollectionStorage implements com.ivaaaak.common.util.CollectionStor
 
 
     public Person[] getMatchingPeople(Location location) {
-        return hashtable.values().stream().filter(x -> (x.getLocation() != null)).filter(x -> (x.getLocation().equals(location))).toArray(Person[]::new);
+        return hashtable.values().stream()
+                .filter(x -> (x.getLocation() != null))
+                .filter(x -> (x.getLocation().equals(location)))
+                .toArray(Person[]::new);
     }
 
     public Person[] getMatchingPeople(String substring) {
-        return hashtable.values().stream().filter(x -> x.getName().startsWith(substring)).toArray(Person[]::new);
+        return hashtable.values().stream()
+                .filter(x -> x.getName().startsWith(substring))
+                .toArray(Person[]::new);
     }
 
     public Person getMaxColorPerson() {
@@ -100,9 +105,10 @@ public class CollectionStorage implements com.ivaaaak.common.util.CollectionStor
     }
 
     public Integer getMatchingIDKey(Integer id) {
-        Optional<Map.Entry<Integer, Person>> element = hashtable.entrySet().stream().
-                filter(x -> x.getValue().getId().equals(id)).
-                findFirst();
-        return element.map(Map.Entry::getKey).orElse(null);
+        Optional<Integer> element = hashtable.entrySet().stream()
+                .filter(x -> x.getValue().getId().equals(id))
+                .map(Map.Entry::getKey)
+                .findFirst();
+        return element.orElse(null);
     }
 }
