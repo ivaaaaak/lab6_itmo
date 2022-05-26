@@ -6,8 +6,6 @@ import java.io.Serializable;
 
 public class CommandResult implements Serializable {
 
-    private static final long serialVersionUID = -2217548177992747304L;
-
     private final String message;
     private final Person[] people;
 

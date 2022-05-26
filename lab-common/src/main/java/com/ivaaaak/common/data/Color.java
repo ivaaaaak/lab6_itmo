@@ -5,7 +5,5 @@ import java.io.Serializable;
 public enum Color implements Serializable {
     RED,
     BLUE,
-    ORANGE;
-
-    private static final long serialVersionUID = -9168490153161869909L;
+    ORANGE
 }
