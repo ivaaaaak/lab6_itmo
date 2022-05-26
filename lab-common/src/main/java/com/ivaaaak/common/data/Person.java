@@ -5,6 +5,8 @@ import java.util.Objects;
 
 public class Person implements Comparable<Person>, Serializable {
 
+    private static final long serialVersionUID = -39732003514516137L;
+
     private Integer id; //не null, больше 0, уникальное, генерируется автоматически
     private final String name; //не null, строка не пустая
     private final Coordinates coordinates; //не null

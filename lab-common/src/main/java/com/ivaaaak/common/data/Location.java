@@ -5,6 +5,8 @@ import java.util.Objects;
 
 public class Location implements Serializable {
 
+    private static final long serialVersionUID = 171140963283986378L;
+
     private final Long x; //не null
     private final Integer y; //не null
     private final int z;
