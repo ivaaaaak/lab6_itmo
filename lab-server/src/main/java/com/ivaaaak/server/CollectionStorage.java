@@ -39,12 +39,14 @@ public class CollectionStorage implements com.ivaaaak.common.util.CollectionStor
 
     public void add(Integer key, Person person) {
         person.setId(getMaxId() + 1);
+        person.setKey(key);
         hashtable.put(key, person);
     }
 
     public void replace(Integer key, Person newPerson) {
         Person oldPerson = hashtable.get(key);
         newPerson.setId(oldPerson.getId());
+        newPerson.setKey(key);
         hashtable.replace(key, oldPerson, newPerson);
     }
 
@@ -88,6 +90,7 @@ public class CollectionStorage implements com.ivaaaak.common.util.CollectionStor
         Person oldPerson = hashtable.get(oldKey);
         if (oldPerson.compareTo(newPerson) < 0) {
             newPerson.setId(getMaxId() + 1);
+            newPerson.setKey(oldKey);
             hashtable.replace(oldKey, oldPerson, newPerson);
             return true;
         }
@@ -98,6 +101,7 @@ public class CollectionStorage implements com.ivaaaak.common.util.CollectionStor
         Person oldPerson = hashtable.get(oldKey);
         if (oldPerson.compareTo(newPerson) > 0) {
             newPerson.setId(getMaxId() + 1);
+            newPerson.setKey(oldKey);
             hashtable.replace(oldKey, oldPerson, newPerson);
             return true;
         }

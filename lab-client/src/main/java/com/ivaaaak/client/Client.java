@@ -80,7 +80,7 @@ public final class Client {
             if (answer != null) {
                 StringJoiner output = new StringJoiner("\n\n");
                 for (Person person : answer) {
-                    output.add(person.toString());
+                    output.add(person.getKey() + " = " + person);
                 }
                 System.out.println(output);
             }

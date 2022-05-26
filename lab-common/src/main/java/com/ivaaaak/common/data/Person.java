@@ -16,7 +16,7 @@ public class Person implements Comparable<Person>, Serializable {
     private final Color hairColor; //не null
     private final Country nationality; //может быть null
     private final Location location; // может быть null
-
+    private Integer key;
 
     public Person(String name,
                   Coordinates coordinates,
@@ -106,6 +106,14 @@ public class Person implements Comparable<Person>, Serializable {
 
     public Color getHairColor() {
         return hairColor;
+    }
+
+    public void setKey(Integer key) {
+        this.key = key;
+    }
+
+    public Integer getKey() {
+        return key;
     }
 
     @Override
