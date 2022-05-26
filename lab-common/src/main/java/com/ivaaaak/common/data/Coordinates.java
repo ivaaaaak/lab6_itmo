@@ -6,6 +6,8 @@ import java.util.Objects;
 
     public class Coordinates implements Serializable {
 
+        private static final long serialVersionUID = -8565238074315162779L;
+
         private final Integer x; //Максимальное значение: 172, не null
         private final Double y; //не null
 
