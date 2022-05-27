@@ -16,6 +16,7 @@ public interface CollectionStorable {
     void remove(Integer key);
     void add(Integer key, Person person);
     void replace(Integer key, Person newPerson);
+    Person[] getAllPeople();
     Person[] getMatchingPeople(Location location);
     Person[] getMatchingPeople(String substring);
     Person getMaxColorPerson();

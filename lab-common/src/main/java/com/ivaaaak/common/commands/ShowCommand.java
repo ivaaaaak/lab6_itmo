@@ -10,8 +10,7 @@ public class ShowCommand extends Command {
     public CommandResult execute(CollectionStorable collectionStorage) {
         if (collectionStorage.getHashtable().isEmpty()) {
             return new CommandResult("The collection is empty");
-        }
-        Person[] answer = collectionStorage.getHashtable().values().toArray(Person[]::new);
+        }Person[] answer = collectionStorage.getAllPeople();
         return new CommandResult(answer);
     }
 

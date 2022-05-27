@@ -62,6 +62,9 @@ public class CollectionStorage implements com.ivaaaak.common.util.CollectionStor
         return hashtable.containsKey(key);
     }
 
+    public Person[] getAllPeople() {
+        return hashtable.values().toArray(new Person[0]);
+    }
 
     public Person[] getMatchingPeople(Location location) {
         return hashtable.values().stream()
