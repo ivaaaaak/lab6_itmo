@@ -52,7 +52,7 @@ public class PersonMaker {
 
         System.out.println("If you want to initialize LOCATION, type \"+\"");
         String answer = inputManager.readLine();
-        if (!answer.isBlank() && "+".equals(answer)) {
+        if (!answer.isEmpty() && "+".equals(answer)) {
             Location location = makeLocation();
             return new Person(name, coordinates, height, weight, hairColor, nationality, location);
         } else {
@@ -120,7 +120,7 @@ public class PersonMaker {
 
             while (true) {
                 String input = inputManager.readLine();
-                if (input.isBlank() && canBeNull) {
+                if (input.isEmpty() && canBeNull) {
                     return null;
                 }
                 T value;

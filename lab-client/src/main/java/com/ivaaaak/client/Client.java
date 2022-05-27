@@ -101,7 +101,7 @@ public final class Client {
 
 
     private static <T> T checkArgument(String arg, Function<String, T> converter) {
-        if (arg.isBlank()) {
+        if (arg.isEmpty()) {
             System.out.println("This command needs an argument");
             return null;
         }
