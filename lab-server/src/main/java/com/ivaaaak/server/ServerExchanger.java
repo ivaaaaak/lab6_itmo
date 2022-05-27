@@ -23,7 +23,7 @@ public class ServerExchanger {
     private final int maxMetaData = 4;
     private ServerSocket serverSocket;
     private final HashSet<Socket> clients = new HashSet<>();
-    private final int serverWaitingPeriod = 10;
+    private final int serverWaitingPeriod = 100;
 
     public ServerExchanger() {
 
@@ -53,6 +53,7 @@ public class ServerExchanger {
             clientSocket.setSoTimeout(serverWaitingPeriod);
             if (inputStream.read(commandSize) != 0) {
                 byte[] command = new byte[ByteBuffer.wrap(commandSize).getInt()];
+                clientSocket.setSoTimeout(serverWaitingPeriod);
                 if (inputStream.read(command) != 0) {
                     Command currentCommand = (Command) deserialize(command);
                     LOGGER.info("Read command from the client {}: {}", clientSocket.getInetAddress().toString(), currentCommand.toString());

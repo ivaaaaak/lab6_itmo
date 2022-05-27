@@ -6,6 +6,7 @@ import com.ivaaaak.common.commands.CommandResult;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeUnit;
@@ -18,7 +19,7 @@ public class ClientExchanger {
     private final String host;
     private final int port;
     private final int maxMetaData = 4;
-    private final int clientWaitingPeriod = 7;
+    private final int clientWaitingPeriod = 20;
     private SocketChannel channel;
 
     public ClientExchanger(String host, int port) {
@@ -54,7 +55,7 @@ public class ClientExchanger {
 
         ByteBuffer mainData = ByteBuffer.wrap(serializedCommand);
         ByteBuffer metaData = ByteBuffer.allocate(maxMetaData).putInt(commandSize);
-        metaData.position(0);
+        ((Buffer) metaData).rewind();
 
         int waitingTime = clientWaitingPeriod;
         while (waitingTime > 0) {
@@ -80,7 +81,7 @@ public class ClientExchanger {
         int waitingTime = clientWaitingPeriod;
         while (waitingTime > 0) {
             if (channel.read(metaData) == metaData.remaining()) {
-                metaData.position(0);
+                ((Buffer) metaData).rewind();
                 ByteBuffer mainData = ByteBuffer.allocate(metaData.getInt());
                 while (waitingTime > 0) {
                     if (channel.read(mainData) == mainData.remaining()) {
